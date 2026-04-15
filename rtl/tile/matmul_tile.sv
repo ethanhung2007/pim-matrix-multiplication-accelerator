@@ -19,8 +19,15 @@ module matmul_tile #(
   logic [DATA_W-1:0] b_rdata;
   logic en, clr, we;
 
+  always_ff @(posedge clk) begin
+    if (clr) addr <= '0;
+    else addr <= addr + 1;
+  end
 
-  tile_ctrl ctrl_fsm (
+
+  tile_ctrl #(
+      .TILE_K(TILE_K)
+  ) ctrl_fsm (
       .clk(clk),
       .start(start),
       .rst(rst),
@@ -30,7 +37,10 @@ module matmul_tile #(
       .we(we)
   );
 
-  bram a_bram (
+  bram #(
+      .TILE_K(TILE_K),
+      .DATA_W(DATA_W)
+  ) a_bram (
       .clk(clk),
       .we(we),
       .addr(addr),
@@ -38,7 +48,10 @@ module matmul_tile #(
       .rdata(a_rdata)
   );
 
-  bram b_bram (
+  bram #(
+      .TILE_K(TILE_K),
+      .DATA_W(DATA_W)
+  ) b_bram (
       .clk(clk),
       .we(we),
       .addr(addr),
@@ -47,7 +60,11 @@ module matmul_tile #(
   );
 
 
-  mac_unit mac0 (
+  mac_unit #(
+      .TILE_K(TILE_K),
+      .DATA_W(DATA_W),
+      .ACC_W (ACC_W)
+  ) mac0 (
       .a  (a_rdata),
       .b  (b_rdata),
       .clk(clk),

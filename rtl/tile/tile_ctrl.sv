@@ -12,7 +12,7 @@ module tile_ctrl #(
     output logic we
 );
 
-  typedef enum {
+  typedef enum logic [1:0] {
     IDLE,
     LOAD,
     COMPUTE,
@@ -20,7 +20,7 @@ module tile_ctrl #(
   } state_t;
 
   state_t current_state, next_state;
-  logic [$clog2(TILE_K)-1:0] counter;
+  logic [$clog2(TILE_K):0] counter;
 
   always_comb begin
     next_state = current_state;
@@ -32,7 +32,7 @@ module tile_ctrl #(
         if (counter == TILE_K - 1) next_state = COMPUTE;
       end
       COMPUTE: begin
-        if (counter == TILE_K - 1) next_state = DONE;
+        if (counter == TILE_K) next_state = DONE;
       end
       DONE: begin
         next_state = IDLE;
@@ -72,7 +72,7 @@ module tile_ctrl #(
       end
       COMPUTE: begin
         clr = '0;
-        en = '1;
+        en = (counter != '0);
         valid = '0;
         we = '0;
       end

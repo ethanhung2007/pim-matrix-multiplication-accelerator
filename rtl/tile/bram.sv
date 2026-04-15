@@ -11,7 +11,7 @@ module bram #(
     output logic [DATA_W-1:0] rdata
 );
 
-  logic [DATA_W-1:0] mem[TILE_K];
+  (* ram_style = "block" *) logic [DATA_W-1:0] mem[TILE_K];
 
   always_ff @(posedge clk) begin
     if (we) mem[addr] <= wdata;
