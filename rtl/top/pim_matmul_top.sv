@@ -9,47 +9,52 @@ module pim_matmul_top #(
     input logic clk,
     input logic start,
     input logic rst,
-    input  logic [DATA_W-1:0] a_wdata [NUM_TILES-1:0],
-    input  logic [DATA_W-1:0] b_wdata [NUM_TILES-1:0],
+    input logic [DATA_W-1:0] a_wdata[NUM_TILES-1:0],
+    input logic [DATA_W-1:0] b_wdata[NUM_TILES-1:0],
     output logic [ACC_W + $clog2(NUM_TILES)-1:0] fsum,
     output logic valid_out
-) ;
+);
 
   localparam int NUM_STAGES = $clog2(NUM_TILES);
 
-  logic [ACC_W-1:0] psum_bus [NUM_TILES];
+  generate
+    if (NUM_TILES & (NUM_TILES - 1))
+      $fatal(1, "NUM_TILES must be a power of 2, got %0d", NUM_TILES);
+  endgenerate
+
+  logic [ACC_W-1:0] psum_bus[NUM_TILES];
   logic [NUM_TILES-1:0] valid_bus;
-  logic [NUM_STAGES:0] valid_shift; 
+  logic [NUM_STAGES:0] valid_shift;
 
   generate
     genvar i;
     for (i = 0; i < NUM_TILES; i++) begin : gen_tiles
-        matmul_tile #(
+      matmul_tile #(
           .TILE_K(TILE_K),
           .DATA_W(DATA_W),
-          .ACC_W(ACC_W)
-        ) tile (
-            .clk(clk),
-            .rst(rst),
-            .start(start),
-            .a_wdata(a_wdata[i]),
-            .b_wdata(b_wdata[i]),
-            .psum(psum_bus[i]),
-            .valid(valid_bus[i])
-        );
+          .ACC_W (ACC_W)
+      ) tile (
+          .clk(clk),
+          .rst(rst),
+          .start(start),
+          .a_wdata(a_wdata[i]),
+          .b_wdata(b_wdata[i]),
+          .psum(psum_bus[i]),
+          .valid(valid_bus[i])
+      );
     end
   endgenerate
 
   reduction_tree #(
-    .TILE_K(TILE_K),
-    .DATA_W(DATA_W),
-    .NUM_TILES(NUM_TILES),
-    .ACC_W(ACC_W)
+      .TILE_K(TILE_K),
+      .DATA_W(DATA_W),
+      .NUM_TILES(NUM_TILES),
+      .ACC_W(ACC_W)
   ) tree (
-    .psums(psum_bus),
-    .clk(clk),
-    .fsum(fsum)
-  ) ;
+      .psums(psum_bus),
+      .clk  (clk),
+      .fsum (fsum)
+  );
 
   always_ff @(posedge clk) begin
     if (rst) valid_shift <= '0;
