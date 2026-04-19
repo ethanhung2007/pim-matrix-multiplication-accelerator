@@ -9,6 +9,8 @@ module pim_matmul_top #(
     input logic clk,
     input logic start,
     input logic rst,
+    input logic [$clog2(TILE_K)-1:0] wr_addr,
+    input logic wr_en,
     input logic [DATA_W-1:0] a_wdata[NUM_TILES-1:0],
     input logic [DATA_W-1:0] b_wdata[NUM_TILES-1:0],
     output logic [ACC_W + $clog2(NUM_TILES)-1:0] fsum,
@@ -37,8 +39,10 @@ module pim_matmul_top #(
           .clk(clk),
           .rst(rst),
           .start(start),
+          .wr_en(wr_en),
           .a_wdata(a_wdata[i]),
           .b_wdata(b_wdata[i]),
+          .wr_addr(wr_addr),
           .psum(psum_bus[i]),
           .valid(valid_bus[i])
       );

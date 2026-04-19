@@ -8,22 +8,18 @@ module matmul_tile #(
     input logic clk,
     input logic rst,
     input logic start,
+    input logic wr_en,
     input logic [DATA_W-1:0] a_wdata,
     input logic [DATA_W-1:0] b_wdata,
+    input logic [$clog2(TILE_K)-1:0] wr_addr,
     output logic [ACC_W-1:0] psum,
     output logic valid
 );
 
-  logic [$clog2(TILE_K)-1:0] addr;
   logic [DATA_W-1:0] a_rdata;
   logic [DATA_W-1:0] b_rdata;
-  logic en, clr, we;
-
-  always_ff @(posedge clk) begin
-    if (clr) addr <= '0;
-    else addr <= addr + 1;
-  end
-
+  logic [$clog2(TILE_K)-1:0] rd_addr;
+  logic en, clr;
 
   tile_ctrl #(
       .TILE_K(TILE_K)
@@ -34,7 +30,7 @@ module matmul_tile #(
       .clr(clr),
       .en(en),
       .valid(valid),
-      .we(we)
+      .rd_addr(rd_addr)
   );
 
   bram #(
@@ -42,8 +38,9 @@ module matmul_tile #(
       .DATA_W(DATA_W)
   ) a_bram (
       .clk(clk),
-      .we(we),
-      .addr(addr),
+      .we(wr_en),
+      .wr_addr(wr_addr),
+      .rd_addr(rd_addr),
       .wdata(a_wdata),
       .rdata(a_rdata)
   );
@@ -53,8 +50,9 @@ module matmul_tile #(
       .DATA_W(DATA_W)
   ) b_bram (
       .clk(clk),
-      .we(we),
-      .addr(addr),
+      .we(wr_en),
+      .wr_addr(wr_addr),
+      .rd_addr(rd_addr),
       .wdata(b_wdata),
       .rdata(b_rdata)
   );
@@ -65,13 +63,13 @@ module matmul_tile #(
       .DATA_W(DATA_W),
       .ACC_W (ACC_W)
   ) mac0 (
-      .a  (a_rdata),
-      .b  (b_rdata),
+      .a (a_rdata),
+      .b (b_rdata),
       .clk(clk),
       .rst(rst),
       .clr(clr),
       .en (en),
-      .P  (psum)
+      .P (psum)
   );
 
 endmodule

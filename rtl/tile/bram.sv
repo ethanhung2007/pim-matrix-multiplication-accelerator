@@ -6,7 +6,8 @@ module bram #(
 ) (
     input logic clk,
     input logic we,
-    input logic [$clog2(TILE_K)-1:0] addr,
+    input logic [$clog2(TILE_K)-1:0] wr_addr,
+    input logic [$clog2(TILE_K)-1:0] rd_addr,
     input logic [DATA_W-1:0] wdata,
     output logic [DATA_W-1:0] rdata
 );
@@ -14,8 +15,8 @@ module bram #(
   (* ram_style = "block" *) logic [DATA_W-1:0] mem[TILE_K];
 
   always_ff @(posedge clk) begin
-    if (we) mem[addr] <= wdata;
-    rdata <= mem[addr];
+    if (we) mem[wr_addr] <= wdata;
+    rdata <= mem[rd_addr];
   end
 
 endmodule

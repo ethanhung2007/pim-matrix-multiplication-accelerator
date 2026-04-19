@@ -3,18 +3,17 @@ import util_pkg::*;
 module tile_ctrl #(
     parameter int TILE_K = 64
 ) (
-    input  logic clk,
-    input  logic start,
-    input  logic rst,
+    input logic clk,
+    input logic start,
+    input logic rst,
     output logic clr,
     output logic en,
     output logic valid,
-    output logic we
+    output logic [$clog2(TILE_K)-1:0] rd_addr
 );
 
   typedef enum logic [1:0] {
     IDLE,
-    LOAD,
     COMPUTE,
     DONE
   } state_t;
@@ -26,10 +25,7 @@ module tile_ctrl #(
     next_state = current_state;
     case (current_state)
       IDLE: begin
-        if (start) next_state = LOAD;
-      end
-      LOAD: begin
-        if (counter == TILE_K - 1) next_state = COMPUTE;
+        if (start) next_state = COMPUTE;
       end
       COMPUTE: begin
         if (counter == TILE_K) next_state = DONE;
@@ -50,43 +46,33 @@ module tile_ctrl #(
       counter <= 0;
     end else begin
       current_state <= next_state;
-      if ((current_state == IDLE && next_state == LOAD) || (current_state == LOAD && next_state == COMPUTE))
-        counter <= '0;
-      else counter <= counter + 1;
+      if (current_state == COMPUTE) counter <= counter + 1;
+      else counter <= '0;
     end
   end
 
   always_comb begin
+    rd_addr = counter[$clog2(TILE_K)-1:0];
     case (current_state)
       IDLE: begin
         clr = '1;
         en = '0;
         valid = '0;
-        we = '0;
-      end
-      LOAD: begin
-        clr = '0;
-        en = '0;
-        valid = '0;
-        we = '1;
       end
       COMPUTE: begin
         clr = '0;
         en = (counter != '0);
         valid = '0;
-        we = '0;
       end
       DONE: begin
         clr = '0;
         en = '0;
         valid = '1;
-        we = '0;
       end
       default: begin
         clr = '0;
         en = '0;
         valid = '0;
-        we = '0;
       end
     endcase
   end
