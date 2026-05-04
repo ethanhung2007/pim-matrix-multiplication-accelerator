@@ -12,10 +12,10 @@ module arty_a7_top #(
     input logic go,
     input logic rst,
     output logic done,
-    input logic [DATA_W-1:0] a_mem_data[NUM_TILES-1:0],
-    input logic [DATA_W-1:0] b_mem_data[NUM_TILES-1:0],
-    output logic [$clog2(M * TILE_K * NUM_TILES)-1:0] a_mem_addr[NUM_TILES-1:0],
-    output logic [$clog2(TILE_K * NUM_TILES * N)-1:0] b_mem_addr[NUM_TILES-1:0],
+    input logic [DATA_W-1:0] a_mem_data [NUM_TILES-1:0],
+    input logic [DATA_W-1:0] b_mem_data [NUM_TILES-1:0],
+    output logic [$clog2(M * TILE_K * NUM_TILES)-1:0] a_mem_addr [NUM_TILES-1:0],
+    output logic [$clog2(TILE_K * NUM_TILES * N)-1:0] b_mem_addr [NUM_TILES-1:0],
     output logic [$clog2(M * N)-1:0] c_mem_addr,
     output logic [ACC_W + $clog2(NUM_TILES)-1:0] c_mem_data,
     output logic c_wr_en
@@ -26,8 +26,8 @@ module arty_a7_top #(
   logic wr_en;
   logic start;
   logic [$clog2(TILE_K)-1:0] wr_addr;
-  logic [DATA_W-1:0] a_wdata[NUM_TILES-1:0];
-  logic [DATA_W-1:0] b_wdata[NUM_TILES-1:0];
+  logic [DATA_W-1:0] a_wdata [NUM_TILES-1:0];
+  logic [DATA_W-1:0] b_wdata [NUM_TILES-1:0];
 
   top_controller #(
       .M(M),
