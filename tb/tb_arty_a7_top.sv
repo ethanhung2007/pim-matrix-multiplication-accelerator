@@ -98,9 +98,9 @@ module tb_arty_a7_top;
     end
 
     for (int i = 0; i < M*K_TOTAL; i++)
-      A_mem[idx] = $urandom_range((1 << DATA_W) - 1);
+      A_mem[i] = $urandom_range((1 << DATA_W) - 1);
     for (int i = 0; i < K_TOTAL*N; i++)
-      B_mem[idx] = $urandom_range((1 << DATA_W) - 1);
+      B_mem[i] = $urandom_range((1 << DATA_W) - 1);
 
     compute_reference();
 

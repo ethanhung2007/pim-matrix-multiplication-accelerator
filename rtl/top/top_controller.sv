@@ -73,6 +73,8 @@ module top_controller #(
       load_counter <= 0;
       i <= '0;
       j <= '0;
+      wr_en_r <= '0;
+      wr_addr_r <= '0;
     end else begin
       wr_addr_r <= load_counter;
       wr_en_r <= (state == LOAD);

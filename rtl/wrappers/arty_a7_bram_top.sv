@@ -11,7 +11,8 @@ module arty_a7_bram_top #(
     input logic clk,
     input logic rst,
     input logic go,
-    output logic done
+    output logic done,
+    output logic [3:0] result_led
 );
   logic [DATA_W-1:0] a_mem_data[NUM_TILES-1:0];
   logic [DATA_W-1:0] b_mem_data[NUM_TILES-1:0];
@@ -57,7 +58,7 @@ module arty_a7_bram_top #(
       tile_mem #(
           .DEPTH(M * TILE_K),
           .DATA_W(DATA_W),
-          .FILENAME($sformatf("a_tile_%0d.mem", i))
+          .FILENAME($sformatf("mem/a_tile_%0d.mem", i))
       ) u_a (
           .clk  (clk),
           .addr (a_local),
@@ -67,7 +68,7 @@ module arty_a7_bram_top #(
       tile_mem #(
           .DEPTH(N * TILE_K),
           .DATA_W(DATA_W),
-          .FILENAME($sformatf("b_tile_%0d.mem", i))
+          .FILENAME($sformatf("mem/b_tile_%0d.mem", i))
       ) u_b (
           .clk  (clk),
           .addr (b_local),
@@ -75,4 +76,7 @@ module arty_a7_bram_top #(
       );
     end
   endgenerate
+
+  assign result_led = c_bram[0][3:0];
+
 endmodule
