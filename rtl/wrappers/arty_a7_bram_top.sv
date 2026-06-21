@@ -22,6 +22,8 @@ module arty_a7_bram_top #(
   logic [ACC_W + $clog2(NUM_TILES)-1:0] c_mem_data;
   logic c_wr_en;
   logic [ACC_W + $clog2(NUM_TILES)-1:0] c_bram [0:M*N-1];
+  logic done_pulse; 
+  logic done_latched;
 
   always_ff @(posedge clk)
       if (c_wr_en) c_bram[c_mem_addr] <= c_mem_data;
@@ -37,7 +39,7 @@ module arty_a7_bram_top #(
       .clk(clk),
       .go(go),
       .rst(rst),
-      .done(done),
+      .done(done_pulse),
       .a_mem_data(a_mem_data),
       .b_mem_data(b_mem_data),
       .a_mem_addr(a_mem_addr),
@@ -46,6 +48,11 @@ module arty_a7_bram_top #(
       .c_mem_data(c_mem_data),
       .c_wr_en(c_wr_en)
   );
+
+  always_ff @(posedge clk) begin
+    if (rst) done_latched <= 1'b0;
+    else if (done_pulse) done_latched <= 1'b1;
+  end
 
   generate
     for (genvar i = 0; i < NUM_TILES; i++) begin : gen_bram
@@ -58,7 +65,7 @@ module arty_a7_bram_top #(
       tile_mem #(
           .DEPTH(M * TILE_K),
           .DATA_W(DATA_W),
-          .FILENAME($sformatf("mem/a_tile_%0d.mem", i))
+          .FILENAME($sformatf("a_tile_%0d.mem", i))
       ) u_a (
           .clk  (clk),
           .addr (a_local),
@@ -68,7 +75,7 @@ module arty_a7_bram_top #(
       tile_mem #(
           .DEPTH(N * TILE_K),
           .DATA_W(DATA_W),
-          .FILENAME($sformatf("mem/b_tile_%0d.mem", i))
+          .FILENAME($sformatf("b_tile_%0d.mem", i))
       ) u_b (
           .clk  (clk),
           .addr (b_local),
@@ -78,5 +85,6 @@ module arty_a7_bram_top #(
   endgenerate
 
   assign result_led = c_bram[0][3:0];
+  assign done = done_latched;
 
 endmodule
