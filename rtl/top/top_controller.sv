@@ -30,11 +30,12 @@ module top_controller #(
 
   localparam int K = TILE_K * NUM_TILES;
 
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     IDLE,
     LOAD,
     COMPUTE,
-    OUTPUT
+    OUTPUT,
+    DONE
   } state_t;
 
   state_t state, next_state;
@@ -58,15 +59,17 @@ module top_controller #(
         if (valid_out) next_state = OUTPUT;
       end
       OUTPUT: begin
-        if (i == M - 1 && j == N - 1) next_state = IDLE;
-        else next_state = LOAD;
+        next_state = (i == M - 1 && j == N - 1) ? DONE : LOAD;
+      end
+      DONE: begin
+        next_state = IDLE;
       end
       default: begin
         next_state = IDLE;
       end
     endcase
   end
-
+      
   always_ff @(posedge clk) begin
     if (rst) begin
       state <= IDLE;
@@ -135,7 +138,9 @@ module top_controller #(
         c_wr_en = 1;
         c_mem_data = fsum;
         c_mem_addr = i * N + j;
-        if (i == M - 1 && j == N - 1) done = 1;
+      end
+      DONE: begin
+        done = 1;
       end
     endcase
   end

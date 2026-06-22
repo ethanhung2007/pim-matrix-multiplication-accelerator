@@ -12,14 +12,16 @@ module tile_ctrl #(
     output logic [$clog2(TILE_K)-1:0] rd_addr
 );
 
-  typedef enum logic [1:0] {
+  typedef enum logic [2:0] {
     IDLE,
     COMPUTE,
+    DRAIN,
     DONE
   } state_t;
 
   state_t current_state, next_state;
   logic [$clog2(TILE_K):0] counter;
+  logic [1:0] drain_counter;
 
   always_comb begin
     next_state = current_state;
@@ -28,7 +30,10 @@ module tile_ctrl #(
         if (start) next_state = COMPUTE;
       end
       COMPUTE: begin
-        if (counter == TILE_K) next_state = DONE;
+        if (counter == TILE_K) next_state = DRAIN;
+      end
+      DRAIN: begin
+        if (drain_counter == 2'd2) next_state = DONE;
       end
       DONE: begin
         next_state = IDLE;
@@ -44,10 +49,13 @@ module tile_ctrl #(
     if (rst) begin
       current_state <= IDLE;
       counter <= 0;
+      drain_counter <= '0;
     end else begin
       current_state <= next_state;
       if (current_state == COMPUTE) counter <= counter + 1;
       else counter <= '0;
+      if (current_state == DRAIN) drain_counter <= drain_counter + 1;
+      else drain_counter <= '0;
     end
   end
 
@@ -62,6 +70,11 @@ module tile_ctrl #(
       COMPUTE: begin
         clr = '0;
         en = (counter != '0);
+        valid = '0;
+      end
+      DRAIN: begin
+        clr = '0;
+        en = '0; 
         valid = '0;
       end
       DONE: begin
