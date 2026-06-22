@@ -18,6 +18,13 @@ A = read_matrices("A.hex", M, K, DATA_W)
 B = read_matrices("B.hex", K, N, DATA_W)
 
 res = A @ B
+
+print("\n--- Expected nibbles for c_bram[0:16] ---")
+for idx in range(16):
+    i, j = idx // N, idx % N
+    val = res[i, j]
+    print(f"c_bram[{idx}] (pos {i},{j}): expected = {val & 0xF:04b}  (full value = {val})")
+
 hex_digits = math.ceil(ACC_W / 4)
 
 with open("out.hex", "w") as f:
