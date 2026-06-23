@@ -1,5 +1,5 @@
-## Clock (100 MHz)
-set_property -dict { PACKAGE_PIN E3  IOSTANDARD LVCMOS33 } [get_ports { clk }];
+## Clock (~159 MHz, 6.3 ns constraint)
+create_clock -add -name sys_clk_pin -period 6.3 -waveform {0 3.15} [get_ports { clk }];
 create_clock -add -name sys_clk_pin -period 6.3 -waveform {0 3.15} [get_ports { clk }];
 
 ## Buttons

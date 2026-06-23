@@ -9,7 +9,7 @@ module arty_a7_bram_top #(
     parameter int ACC_W = 2 * DATA_W + $clog2(TILE_K)
 ) (
     input logic clk,
-    input logic [3:0] sw;
+    input logic [3:0] sw,
     input logic rst,
     input logic go,
     output logic done,

@@ -65,6 +65,21 @@ module tb_arty_a7_top;
       C_written[c_mem_addr] <= 1;
     end
   end
+  int unsigned cyc;
+  logic counting;
+
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      cyc <= 0;
+      counting <= 0;
+    end else begin
+      if (go) counting <= 1;  
+      if (done) counting <= 0;
+      if (counting && !done) cyc <= cyc + 1;
+    end
+  end
+
+  always_ff @(posedge clk) if (done) $display("Latency = %0d cycles", cyc);
 
   task compute_reference();
     logic [C_W-1:0] acc;
@@ -72,35 +87,33 @@ module tb_arty_a7_top;
       for (int j = 0; j < N; j++) begin
         acc = '0;
         for (int k = 0; k < K_TOTAL; k++) begin
-          acc = acc + A_mem[i*K_TOTAL + k] * B_mem[k*N + j];
+          acc = acc + A_mem[i*K_TOTAL+k] * B_mem[k*N+j];
         end
-        C_ref[i*N + j] = acc;
+        C_ref[i*N+j] = acc;
       end
     end
   endtask
 
   initial begin
-    int errors;
+    int   errors;
     logic timed_out;
 
     errors = 0;
     timed_out = 0;
 
     rst = 1;
-    go  = 0;
+    go = 0;
     for (int t = 0; t < NUM_TILES; t++) begin
       a_mem_data[t] = '0;
       b_mem_data[t] = '0;
     end
-    for (int idx = 0; idx < M*N; idx++) begin
+    for (int idx = 0; idx < M * N; idx++) begin
       C_dut[idx] = '0;
       C_written[idx] = 0;
     end
 
-    for (int i = 0; i < M*K_TOTAL; i++)
-      A_mem[i] = $urandom_range((1 << DATA_W) - 1);
-    for (int i = 0; i < K_TOTAL*N; i++)
-      B_mem[i] = $urandom_range((1 << DATA_W) - 1);
+    for (int i = 0; i < M * K_TOTAL; i++) A_mem[i] = $urandom_range((1 << DATA_W) - 1);
+    for (int i = 0; i < K_TOTAL * N; i++) B_mem[i] = $urandom_range((1 << DATA_W) - 1);
 
     compute_reference();
 
@@ -117,7 +130,7 @@ module tb_arty_a7_top;
         @(posedge done);
       end
       begin : timeout_block
-        repeat (M*N*(TILE_K + 32) + 200) @(posedge clk);
+        repeat (M * N * (TILE_K + 32) + 200) @(posedge clk);
         timed_out = 1;
       end
     join_any
@@ -130,24 +143,29 @@ module tb_arty_a7_top;
       $finish;
     end
 
-    for (int idx = 0; idx < M*N; idx++) begin
+    for (int idx = 0; idx < M * N; idx++) begin
       automatic int i = idx / N;
       automatic int j = idx % N;
       if (!C_written[idx]) begin
         $display("FAIL: C[%0d][%0d] (idx=%0d) was never written", i, j, idx);
         errors++;
       end else if (C_dut[idx] !== C_ref[idx]) begin
-        $display("FAIL: C[%0d][%0d] expected=%0d got=%0d",
-                 i, j, C_ref[idx], C_dut[idx]);
+        $display("FAIL: C[%0d][%0d] expected=%0d got=%0d", i, j, C_ref[idx], C_dut[idx]);
         errors++;
       end
     end
 
     if (errors == 0)
-      $display("PASS: all %0d C entries match (M=%0d N=%0d K=%0d, NUM_TILES=%0d, TILE_K=%0d)",
-               M*N, M, N, K_TOTAL, NUM_TILES, TILE_K);
-    else
-      $display("FAIL: %0d mismatches out of %0d", errors, M*N);
+      $display(
+          "PASS: all %0d C entries match (M=%0d N=%0d K=%0d, NUM_TILES=%0d, TILE_K=%0d)",
+          M * N,
+          M,
+          N,
+          K_TOTAL,
+          NUM_TILES,
+          TILE_K
+      );
+    else $display("FAIL: %0d mismatches out of %0d", errors, M * N);
 
     $finish;
   end
