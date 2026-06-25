@@ -1,8 +1,8 @@
 # Processing in Memory Matrix Multiplication Accelerator
 
-## Idea (I'm kind of just yapping to myself)
+## Idea
 
-In order to reduce the primary memory bottleneck, I am attempting to implement a matrix multiplication accelerator using in-memory computing or processing in memory. Although this architecture may not optimize performance for an FPGA, due to the fact that there may be some DSP blocks left unused, I think it will be an interesting learning experience for processing in memory architecture, which may eventually have widespread implementations with ML applications.
+In order to reduce the primary memory bottleneck, I am attempting to implement a matrix multiplication accelerator using in-memory computing or processing in memory. Although this architecture may not optimize performance for an FPGA, due to the fact that there may be some DSP blocks left unused, I think it will be an interesting learning experience for processing in memory architecture, which may eventually have widespread implementations with ML applications. 
 
 ## Goals
 
@@ -24,6 +24,6 @@ Finished v1 iteration with proper testbenches + synthesis and bitstream. Althoug
 
 Added register buffering within the MAC unit to decrease the critical path and hence increase clock frequency. Clock frequency is now 160 MHz instead of MHz. (Remember to update this using Clocking Wizard to synthesize a higher clock frequency)
 
-## Extensions
+## Potential Extensions
 
 1. Sparse Matrix Support
