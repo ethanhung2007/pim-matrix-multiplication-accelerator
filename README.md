@@ -22,7 +22,7 @@ Finished v1 iteration with proper testbenches + synthesis and bitstream. Althoug
 
 ### June 22nd
 
-Added register buffering within the MAC unit to decrease the critical path and hence increase clock frequency. Clock frequency is now 160 MHz instead of MHz. (Remember to update this using Clocking Wizard to synthesize a higher clock frequency)
+Added register buffering within the MAC unit to decrease the critical path and hence increase clock frequency. Clock frequency is now 160 MHz instead of 100 MHz. (Remember to update this using Clocking Wizard to synthesize a higher clock frequency)
 
 ## Potential Extensions
 
