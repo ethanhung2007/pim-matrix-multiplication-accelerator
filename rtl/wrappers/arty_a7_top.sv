@@ -23,7 +23,7 @@ module arty_a7_top #(
 
   logic valid_out;
   logic [ACC_W + $clog2(NUM_TILES)-1:0] fsum;
-  logic wr_en;
+  logic a_we, b_we;
   logic start;
   logic [$clog2(TILE_K)-1:0] wr_addr;
   logic [DATA_W-1:0] a_wdata [NUM_TILES-1:0];
@@ -42,7 +42,8 @@ module arty_a7_top #(
       .go(go),
       .valid_out(valid_out),
       .fsum(fsum),
-      .wr_en(wr_en),
+      .a_we(a_we),
+      .b_we(b_we),
       .start(start),
       .wr_addr(wr_addr),
       .a_mem_data(a_mem_data),
@@ -66,7 +67,8 @@ module arty_a7_top #(
       .clk(clk),
       .rst(rst),
       .start(start),
-      .wr_en(wr_en),
+      .a_we(a_we),
+      .b_we(b_we),
       .wr_addr(wr_addr),
       .a_wdata(a_wdata),
       .b_wdata(b_wdata),

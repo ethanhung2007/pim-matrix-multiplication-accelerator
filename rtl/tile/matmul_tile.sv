@@ -8,7 +8,8 @@ module matmul_tile #(
     input logic clk,
     input logic rst,
     input logic start,
-    input logic wr_en,
+    input logic a_we,
+    input logic b_we,
     input logic [DATA_W-1:0] a_wdata,
     input logic [DATA_W-1:0] b_wdata,
     input logic [$clog2(TILE_K)-1:0] wr_addr,
@@ -38,7 +39,7 @@ module matmul_tile #(
       .DATA_W(DATA_W)
   ) a_bram (
       .clk(clk),
-      .we(wr_en),
+      .we(a_we),
       .wr_addr(wr_addr),
       .rd_addr(rd_addr),
       .wdata(a_wdata),
@@ -50,7 +51,7 @@ module matmul_tile #(
       .DATA_W(DATA_W)
   ) b_bram (
       .clk(clk),
-      .we(wr_en),
+      .we(b_we),
       .wr_addr(wr_addr),
       .rd_addr(rd_addr),
       .wdata(b_wdata),

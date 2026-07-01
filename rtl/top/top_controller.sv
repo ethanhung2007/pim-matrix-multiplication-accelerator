@@ -15,7 +15,8 @@ module top_controller #(
     input logic [ACC_W + $clog2(NUM_TILES)-1:0] fsum,
     input logic [DATA_W-1:0] a_mem_data[NUM_TILES-1:0],
     input logic [DATA_W-1:0] b_mem_data[NUM_TILES-1:0],
-    output logic wr_en,
+    output logic a_we,
+    output logic b_we,
     output logic start,
     output logic [$clog2(M * TILE_K * NUM_TILES)-1:0] a_mem_addr[NUM_TILES-1:0],
     output logic [$clog2(TILE_K * NUM_TILES * N)-1:0] b_mem_addr[NUM_TILES-1:0],
@@ -44,7 +45,7 @@ module top_controller #(
   logic [$clog2(N)-1:0] j;
   logic [$clog2(TILE_K):0] load_counter;
   logic [$clog2(TILE_K)-1:0] wr_addr_r;
-  logic wr_en_r;
+  logic a_we_r, b_we_r;
 
   always_comb begin
     next_state = state;
@@ -69,18 +70,20 @@ module top_controller #(
       end
     endcase
   end
-      
+
   always_ff @(posedge clk) begin
     if (rst) begin
       state <= IDLE;
       load_counter <= 0;
       i <= '0;
       j <= '0;
-      wr_en_r <= '0;
+      a_we_r <= '0;
+      b_we_r <= '0;
       wr_addr_r <= '0;
     end else begin
       wr_addr_r <= load_counter;
-      wr_en_r <= (state == LOAD);
+      a_we_r <= (state == LOAD) && (j == 0);
+      b_we_r <= (state == LOAD);
       state <= next_state;
       if (state == LOAD) load_counter <= load_counter + 1;
       else load_counter <= '0;
@@ -105,19 +108,12 @@ module top_controller #(
     c_mem_data = '0;
     a_wdata = '{default: '0};
     b_wdata = '{default: '0};
-    wr_en = 0;
-    wr_addr = '{default: '0};
-
-    if (wr_en_r) begin
-      wr_en   = wr_en_r;
-      wr_addr = wr_addr_r;
-      for (int t = 0; t < NUM_TILES; t++) begin
-        a_wdata[t] = a_mem_data[t];
-        b_wdata[t] = b_mem_data[t];
-      end
-    end else begin
-      a_wdata = '{default: '0};
-      b_wdata = '{default: '0};
+    a_we = a_we_r;
+    b_we = b_we_r;
+    wr_addr = wr_addr_r;
+    for (int t = 0; t < NUM_TILES; t++) begin
+      if (a_we_r) a_wdata[t] = a_mem_data[t];
+      if (b_we_r) b_wdata[t] = b_mem_data[t];
     end
 
     case (state)
@@ -125,10 +121,8 @@ module top_controller #(
       end
       LOAD: begin
         for (int t = 0; t < NUM_TILES; t++) begin
-          a_mem_addr[t] = i * K + t * TILE_K + load_counter;
+          if (j == 0) a_mem_addr[t] = i * K + t * TILE_K + load_counter;
           b_mem_addr[t] = (t * TILE_K + load_counter) * N + j;
-          a_wdata[t] = a_mem_data[t];
-          b_wdata[t] = b_mem_data[t];
         end
         start = (load_counter == TILE_K - 1);
       end
