@@ -26,6 +26,7 @@ module top_controller #(
     output logic done,
     output logic [$clog2(M * N)-1:0] c_mem_addr,
     output logic [ACC_W + $clog2(NUM_TILES)-1:0] c_mem_data,
+    output logic bank_sel,
     output logic c_wr_en
 );
 
@@ -33,8 +34,8 @@ module top_controller #(
 
   typedef enum logic [2:0] {
     IDLE,
-    LOAD,
-    COMPUTE,
+    PRIME,
+    RUN,
     OUTPUT,
     DONE
   } state_t;
@@ -46,21 +47,22 @@ module top_controller #(
   logic [$clog2(TILE_K):0] load_counter;
   logic [$clog2(TILE_K)-1:0] wr_addr_r;
   logic a_we_r, b_we_r;
+  logic load_done;
 
   always_comb begin
     next_state = state;
     case (state)
       IDLE: begin
-        if (go) next_state = LOAD;
+        if (go) next_state = PRIME;
       end
-      LOAD: begin
-        if (load_counter == TILE_K - 1) next_state = COMPUTE;
+      PRIME: begin
+        next_state = (load_counter == TILE_K - 1) ? RUN : PRIME;
       end
-      COMPUTE: begin
-        if (valid_out) next_state = OUTPUT;
+      RUN: begin
+        if (valid_out & load_done) next_state = OUTPUT;
       end
       OUTPUT: begin
-        next_state = (i == M - 1 && j == N - 1) ? DONE : LOAD;
+        next_state = (i == M - 1 && j == N - 1) ? DONE : ((j == 0) ? PRIME : RUN);
       end
       DONE: begin
         next_state = IDLE;
@@ -80,12 +82,13 @@ module top_controller #(
       a_we_r <= '0;
       b_we_r <= '0;
       wr_addr_r <= '0;
+      bank_sel <= 0;
     end else begin
       wr_addr_r <= load_counter;
-      a_we_r <= (state == LOAD) && (j == 0);
-      b_we_r <= (state == LOAD);
+      a_we_r <= (state == PRIME) && (j == 0) && (load_counter < TILE_K);
+      b_we_r <= (state == PRIME || state == RUN) && (load_counter < TILE_K);
       state <= next_state;
-      if (state == LOAD) load_counter <= load_counter + 1;
+      if ((state == RUN || state == PRIME) && load_counter < TILE_K) load_counter <= load_counter + 1;
       else load_counter <= '0;
       if (state == OUTPUT) begin
         if (j == N - 1) begin
@@ -95,7 +98,14 @@ module top_controller #(
           j <= j + 1;
         end
       end
+      if (state == OUTPUT || (state == PRIME && load_counter == TILE_K - 1)) bank_sel <= ~bank_sel;
     end
+  end
+
+  always_ff @(posedge clk) begin
+    if (rst) load_done <= 0;
+    else if (load_counter == TILE_K - 1) load_done <= 1;
+    else if (load_counter < TILE_K - 1) load_done <= 0;
   end
 
   always_comb begin
@@ -119,14 +129,19 @@ module top_controller #(
     case (state)
       IDLE: begin
       end
-      LOAD: begin
+      PRIME: begin
         for (int t = 0; t < NUM_TILES; t++) begin
           if (j == 0) a_mem_addr[t] = i * K + t * TILE_K + load_counter;
           b_mem_addr[t] = (t * TILE_K + load_counter) * N + j;
         end
-        start = (load_counter == TILE_K - 1);
+        start = load_counter == TILE_K - 1;
       end
-      COMPUTE: begin
+      RUN: begin
+        if (load_counter < TILE_K && j != N - 1) begin
+          for (int t = 0; t < NUM_TILES; t++)
+            b_mem_addr[t] = (t * TILE_K + load_counter) * N + (j + 1);
+        end
+        start = (load_counter == TILE_K - 1);
       end
       OUTPUT: begin
         c_wr_en = 1;

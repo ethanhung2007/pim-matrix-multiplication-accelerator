@@ -10,6 +10,7 @@ module matmul_tile #(
     input logic start,
     input logic a_we,
     input logic b_we,
+    input logic bank_sel,
     input logic [DATA_W-1:0] a_wdata,
     input logic [DATA_W-1:0] b_wdata,
     input logic [$clog2(TILE_K)-1:0] wr_addr,
@@ -18,9 +19,13 @@ module matmul_tile #(
 );
 
   logic [DATA_W-1:0] a_rdata;
-  logic [DATA_W-1:0] b_rdata;
+  logic [DATA_W-1:0] b_rdata, b_rdata0, b_rdata1;
   logic [$clog2(TILE_K)-1:0] rd_addr;
+  logic b_we0, b_we1;
   logic en, clr;
+  
+  assign b_we0 = b_we & bank_sel;
+  assign b_we1 = b_we & (~bank_sel);
 
   tile_ctrl #(
       .TILE_K(TILE_K)
@@ -49,15 +54,26 @@ module matmul_tile #(
   bram #(
       .TILE_K(TILE_K),
       .DATA_W(DATA_W)
-  ) b_bram (
+  ) b_bram0 (
       .clk(clk),
-      .we(b_we),
+      .we(b_we0),
       .wr_addr(wr_addr),
       .rd_addr(rd_addr),
       .wdata(b_wdata),
-      .rdata(b_rdata)
+      .rdata(b_rdata0)
   );
 
+  bram #(
+      .TILE_K(TILE_K),
+      .DATA_W(DATA_W)
+  ) b_bram1 (
+      .clk(clk),
+      .we(b_we1),
+      .wr_addr(wr_addr),
+      .rd_addr(rd_addr),
+      .wdata(b_wdata),
+      .rdata(b_rdata1)
+  );
 
   mac_unit #(
       .TILE_K(TILE_K),
@@ -72,5 +88,7 @@ module matmul_tile #(
       .en (en),
       .P (psum)
   );
+
+  assign b_rdata = bank_sel ? b_rdata1 : b_rdata0;
 
 endmodule
