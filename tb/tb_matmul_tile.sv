@@ -1,18 +1,15 @@
 import util_pkg::*;
-
 module tb_matmul_tile;
-
   localparam int TILE_K = 64;
   localparam int DATA_W = 16;
   localparam int ACC_W = 2 * DATA_W + $clog2(TILE_K);
-
-  logic clk = 0, rst, start, wr_en;
+  logic clk = 0, rst, start;
+  logic a_we, b_we, bank_sel;                
   logic [DATA_W-1:0] a_wdata;
   logic [DATA_W-1:0] b_wdata;
   logic [$clog2(TILE_K)-1:0] wr_addr;
   logic [ACC_W-1:0] psum;
   logic valid;
-
   matmul_tile #(
       .TILE_K(TILE_K),
       .DATA_W(DATA_W),
@@ -21,43 +18,45 @@ module tb_matmul_tile;
       .clk(clk),
       .rst(rst),
       .start(start),
-      .wr_en(wr_en),
+      .a_we(a_we),                            
+      .b_we(b_we),
+      .bank_sel(bank_sel),                   
       .a_wdata(a_wdata),
       .b_wdata(b_wdata),
       .wr_addr(wr_addr),
       .psum(psum),
       .valid(valid)
   );
-
   always #5 clk = ~clk;
-
   logic [DATA_W-1:0] a_vec[TILE_K];
   logic [DATA_W-1:0] b_vec[TILE_K];
 
   task automatic load_and_run(input logic [DATA_W-1:0] a_in[TILE_K],
                               input logic [DATA_W-1:0] b_in[TILE_K],
-                              input logic [ACC_W-1:0] expected, input string label);
-    @(posedge clk);
-    wr_en = 1;
+                              input logic [ACC_W-1:0] expected, input string label,
+                              input logic load_bank);
+    @(negedge clk);                 
+    bank_sel = load_bank;
+    a_we = 1;
+    b_we = 1;
     for (int i = 0; i < TILE_K; i++) begin
       wr_addr = i[$clog2(TILE_K)-1:0];
       a_wdata = a_in[i];
       b_wdata = b_in[i];
-      @(posedge clk);
+      @(negedge clk);
     end
-    wr_en   = 0;
+    a_we    = 0;
+    b_we    = 0;
     a_wdata = '0;
     b_wdata = '0;
-
-    @(posedge clk);
+    bank_sel = ~load_bank;
+    @(negedge clk);
+    @(negedge clk);
     start = 1;
-    @(posedge clk);
+    @(negedge clk);
     start = 0;
-
     fork
-      begin
-        @(posedge valid);
-      end
+      begin @(posedge valid); end
       begin
         repeat (TILE_K + 20) @(posedge clk);
         $display("FAIL [%s]: valid never asserted", label);
@@ -65,7 +64,6 @@ module tb_matmul_tile;
       end
     join_any
     disable fork;
-
     #1;
     if (psum === expected) $display("PASS [%s]: psum = %0d (expected %0d)", label, psum, expected);
     else $display("FAIL [%s]: psum = %0d, expected %0d", label, psum, expected);
@@ -82,13 +80,14 @@ module tb_matmul_tile;
   initial begin
     $dumpfile("tb_matmul_tile.vcd");
     $dumpvars(0, tb_matmul_tile);
-
-    rst     = 1;
-    start   = 0;
-    wr_en   = 0;
-    a_wdata = '0;
-    b_wdata = '0;
-    wr_addr = '0;
+    rst      = 1;
+    start    = 0;
+    a_we     = 0;
+    b_we     = 0;
+    bank_sel = 0;
+    a_wdata  = '0;
+    b_wdata  = '0;
+    wr_addr  = '0;
     repeat (4) @(posedge clk);
     rst = 0;
     @(posedge clk);
@@ -97,26 +96,25 @@ module tb_matmul_tile;
       a_vec[i] = 1;
       b_vec[i] = 1;
     end
-    load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "all_ones");
+    load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "all_ones", 1'b0);      
 
     for (int i = 0; i < TILE_K; i++) begin
       a_vec[i] = i[DATA_W-1:0];
       b_vec[i] = 1;
     end
-    load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "ascending_ones");
+    load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "ascending_ones", 1'b1); 
 
     for (int i = 0; i < TILE_K; i++) begin
       a_vec[i] = $urandom_range(0, 255);
       b_vec[i] = $urandom_range(0, 255);
     end
-    load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "random");
+    load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "random", 1'b0);         
 
     for (int i = 0; i < TILE_K; i++) begin
       a_vec[i] = '0;
       b_vec[i] = '0;
     end
-    load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "zeros");
-
+load_and_run(a_vec, b_vec, dot_product(a_vec, b_vec), "zeros", 1'b1);
     $finish;
   end
 
@@ -125,5 +123,4 @@ module tb_matmul_tile;
     $display("FAIL: global timeout");
     $finish;
   end
-
-endmodule
+endmodule    

@@ -31,6 +31,8 @@ module top_controller #(
 );
 
   localparam int K = TILE_K * NUM_TILES;
+  
+  
 
   typedef enum logic [2:0] {
     IDLE,
@@ -49,6 +51,16 @@ module top_controller #(
   logic a_we_r, b_we_r;
   logic load_done;
 
+  logic start_r;
+  logic final_tile_write;
+  logic final_prime_write;
+  logic b_run_we_r;
+  logic final_run_write;
+
+  assign final_prime_write = a_we_r && b_we_r && (wr_addr_r == TILE_K-1);
+  assign final_tile_write = b_we_r && (wr_addr_r == TILE_K-1);
+  assign final_run_write = b_run_we_r && (wr_addr_r == TILE_K-1);
+
   always_comb begin
     next_state = state;
     case (state)
@@ -59,10 +71,12 @@ module top_controller #(
         next_state = (load_counter == TILE_K - 1) ? RUN : PRIME;
       end
       RUN: begin
-        if (valid_out & load_done) next_state = OUTPUT;
+        if (valid_seen && (load_done || j == N-1)) next_state = OUTPUT;
       end
       OUTPUT: begin
-        next_state = (i == M - 1 && j == N - 1) ? DONE : ((j == 0) ? PRIME : RUN);
+        if (i == M-1 && j == N-1)  next_state = DONE;
+        else if (j == N - 1)       next_state = PRIME;  
+        else                       next_state = RUN;
       end
       DONE: begin
         next_state = IDLE;
@@ -83,10 +97,15 @@ module top_controller #(
       b_we_r <= '0;
       wr_addr_r <= '0;
       bank_sel <= 0;
+      start_r <= 0;
+      b_run_we_r <= 0;
     end else begin
+      start_r <= final_tile_write;
+    
       wr_addr_r <= load_counter;
       a_we_r <= (state == PRIME) && (j == 0) && (load_counter < TILE_K);
-      b_we_r <= (state == PRIME || state == RUN) && (load_counter < TILE_K);
+      b_we_r <= ((state == PRIME) || (state == RUN && j != N-1)) && (load_counter < TILE_K);
+      b_run_we_r <= (state == RUN && j != N-1) && (load_counter < TILE_K);
       state <= next_state;
       if ((state == RUN || state == PRIME) && load_counter < TILE_K) load_counter <= load_counter + 1;
       else load_counter <= '0;
@@ -98,18 +117,44 @@ module top_controller #(
           j <= j + 1;
         end
       end
-      if (state == OUTPUT || (state == PRIME && load_counter == TILE_K - 1)) bank_sel <= ~bank_sel;
+      if ((state == OUTPUT && j != N-1) || final_prime_write)
+        bank_sel <= ~bank_sel;
     end
   end
 
   always_ff @(posedge clk) begin
-    if (rst) load_done <= 0;
-    else if (load_counter == TILE_K - 1) load_done <= 1;
-    else if (load_counter < TILE_K - 1) load_done <= 0;
+    if (rst) begin
+      load_done <= 0;
+    end else if (state == IDLE || state == PRIME || state == OUTPUT) begin
+      load_done <= 0;
+    end else if (final_run_write) begin
+      load_done <= 1;
+    end
+  end
+  
+
+  logic valid_seen;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      valid_seen <= 0;
+    end else if (state == OUTPUT || state == PRIME || state == IDLE) begin
+      valid_seen <= 0;
+    end else if (state == RUN && valid_out) begin
+      valid_seen <= 1;
+    end
+  end
+
+  logic [ACC_W + $clog2(NUM_TILES)-1:0] fsum_latched;
+  always_ff @(posedge clk) begin
+    if (rst) begin
+      fsum_latched <= '0;
+    end else if (state == RUN && valid_out) begin
+      fsum_latched <= fsum;
+    end
   end
 
   always_comb begin
-    start = 0;
+    start = start_r;
     done = 0;
     c_wr_en = 0;
     a_mem_addr = '{default: '0};
@@ -134,18 +179,16 @@ module top_controller #(
           if (j == 0) a_mem_addr[t] = i * K + t * TILE_K + load_counter;
           b_mem_addr[t] = (t * TILE_K + load_counter) * N + j;
         end
-        start = load_counter == TILE_K - 1;
       end
       RUN: begin
         if (load_counter < TILE_K && j != N - 1) begin
           for (int t = 0; t < NUM_TILES; t++)
             b_mem_addr[t] = (t * TILE_K + load_counter) * N + (j + 1);
         end
-        start = (load_counter == TILE_K - 1);
       end
       OUTPUT: begin
         c_wr_en = 1;
-        c_mem_data = fsum;
+        c_mem_data = fsum_latched;
         c_mem_addr = i * N + j;
       end
       DONE: begin
