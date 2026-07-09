@@ -1,0 +1,53 @@
+PIM Matmul Accelerator — Benchmark Results (measured, xc7a100t)
+=================================================================
+M x N x K            : 8 x 8 x 512
+NUM_TILES / TILE_K    : 8 / 64
+DATA_W / ACC_W        : 16-bit / 38-bit
+
+Timing (Vivado, post-implementation)
+-------------------------------------
+Clock constraint (XDC)      : 6.3 ns  -> 158.7 MHz
+Worst Negative Slack (WNS)  : 0.837 ns  (timing met)
+Max achievable clock (est.) : 183.0 MHz  (if constraint tightened)
+
+Resource Utilization
+---------------------
+BRAM  : 15.0%
+DSP   : 3.0%
+LUT   : 1%
+FF    : 1%
+IO    : 6%
+BUFG  : 3%
+
+Power
+------
+Total on-chip power : 0.225 W
+Junction temp        : 26.0 C
+
+Throughput
+-----------
+Total FLOPs                 : 65,536  (2 x M x N x K)
+Theoretical peak             : 2.540 GFLOP/s
+Measured latency (testbench) : 5,376 cycles  (M*N output elements, double-buffered)
+Measured cycles/element       : 84 cycles
+Actual throughput            : 1.935 GFLOP/s  (76.2% of peak)
+Speedup from double-buffering : 1.57x vs. single-buffered baseline
+
+Memory Traffic / Roofline
+---------------------------
+DRAM traffic reduction (naive -> row-stationary A + persistent B) : 14.2x
+Arithmetic intensity, naive      : 0.500 FLOP/byte
+Arithmetic intensity, optimized  : 7.111 FLOP/byte
+
+Energy Efficiency
+-------------------
+Efficiency (double-buffered) : 8.600 GFLOP/s/W
+
+Resource Scaling Limits (xc7a100t)
+-------------------------------------
+RAMB36 available            : 135
+DSP48E2 available           : 240
+Max tiles by BRAM (with DB) : 45  (3 BRAM/tile)
+Max tiles by DSP            : 240
+Binding constraint          : BRAM
+Current NUM_TILES=8 uses 17.8% of the BRAM-bound tile ceiling
